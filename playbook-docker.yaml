@@ -1,0 +1,46 @@
+- hosts: local
+  gather_facts: False
+  debugger: on_skipped
+
+  tasks:
+  - name: Instalando docker & docker compose juntos 
+    apt:
+      name: "{{ item }}"
+      update_cache: yes
+      state: present
+    with_items:
+      - docker.io
+      - docker-compose
+
+  - name: Habilitar docker no boot
+    service:
+        name: docker
+        enabled: yes
+        state: started
+
+  - name: Criando arquivo docker compose a partir de um template
+    template:
+      src:  docker-compose.tpl
+      dest: /root/docker-compose.yml
+
+  - name: Copiando artefatos para o servidor
+    copy:
+       src: "{{ item }}"
+       dest: "/root/{{ item }}"
+       owner: root
+       group: root
+    with_items:
+      - Dockerfile
+      - app.py
+      - requirements.txt 
+
+  - name: construindo uma imagem com docker_image e pegando nome imagem em var no inventory
+    docker_image: >
+      name={{image}}
+      tag={{tag}}
+      path=/root/
+      state=present
+  
+  - name: Iniciando docker compose
+    docker_compose:
+      project_src: /root/
